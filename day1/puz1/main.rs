@@ -1,7 +1,6 @@
 use std::fs;
 
 fn main() {
-    println!("Hello world");
     let input = fs::read_to_string("input.txt").expect("Should have been able to read the file");
     let lines = input.split("\n").collect::<Vec<&str>>();
     let mut pair_a = Vec::new();
