@@ -75,6 +75,22 @@ fn diagonal(neighbour: Vec<Vec<char>>) -> i32 {
     count
 }
 
+fn xmas_kernel(neighbour: Vec<Vec<char>>) -> i32 {
+    assert_eq!(neighbour.len(), 3);
+    assert_eq!(neighbour[0].len(), 3);
+    if neighbour[1][1] != 'A' {
+        0
+    } else if (neighbour[0][0] == 'M' && neighbour[2][2] == 'S'
+        || neighbour[0][0] == 'S' && neighbour[2][2] == 'M')
+        && (neighbour[0][2] == 'M' && neighbour[2][0] == 'S'
+            || neighbour[0][2] == 'S' && neighbour[2][0] == 'M')
+    {
+        1
+    } else {
+        0
+    }
+}
+
 fn apply_kernel<F>(neighbour: Vec<Vec<char>>, f: F, stride_x: usize, stride_y: usize) -> i32
 where
     F: Fn(Vec<Vec<char>>) -> i32,
@@ -123,6 +139,23 @@ where
     count
 }
 
+fn apply_xmas_kernel(neighbour: Vec<Vec<char>>) -> i32 {
+    let mut count = 0;
+    for x in 0..neighbour.len() - 2 {
+        for y in 0..neighbour[0].len() - 2 {
+            let mut kernel: Vec<Vec<char>> = Vec::with_capacity(3);
+            for i in 0..3 {
+                kernel.push(Vec::with_capacity(3));
+                for j in 0..3 {
+                    kernel[i].push(neighbour[x + i][y + j]);
+                }
+            }
+            count += xmas_kernel(kernel);
+        }
+    }
+    count
+}
+
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Should have been able to read the file");
     let lines = input
@@ -144,5 +177,7 @@ fn main() {
     if rows.len() >= 4 && rows[0].len() >= 4 {
         count += apply_kernel(rows.clone(), diagonal, 1, 1)
     }
-    println!("Count: {}", count);
+    println!("Result of puzzle 1: {}", count);
+    count = apply_xmas_kernel(rows.clone());
+    println!("Result of puzzle 2: {}", count);
 }
