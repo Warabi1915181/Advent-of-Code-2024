@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs;
 
@@ -52,9 +53,9 @@ fn get_updates(rules: HashMap<i32, Vec<i32>>, updates: Vec<&str>, valid: bool) -
         .collect()
 }
 
-fn get_middle_update(update: &str) -> i32 {
+fn get_middle_update<T: AsRef<str>>(update: T) -> i32 {
     let update_i32 = update
-        .clone()
+        .as_ref()
         .split(',')
         .filter(|s| !s.is_empty())
         .map(|s| s.parse::<i32>().unwrap())
@@ -63,20 +64,37 @@ fn get_middle_update(update: &str) -> i32 {
     update_i32[mid]
 }
 
-fn reorder_invalid_updates(rules: HashMap<i32, Vec<i32>>, updates: Vec<&str>) -> Vec<&str> {
-    // reorder a single update
-    fn reorder_update(update: &str) -> &str {
-        let update_i32 = update
-            .split('.')
-            .filter(|s| !s.is_empty())
-            .collect::<Vec<&str>>();
-        return update;
+fn compare(rules: HashMap<i32, Vec<i32>>, x: &i32, y: &i32) -> Ordering {
+    if let Some(rhs) = rules.get(x) {
+        if rhs.contains(y) {
+            return Ordering::Less;
+        }
     }
+    if let Some(rhs) = rules.get(y) {
+        if rhs.contains(x) {
+            return Ordering::Greater;
+        }
+    }
+    Ordering::Equal
+}
 
+fn reorder_invalid_updates(rules: HashMap<i32, Vec<i32>>, updates: Vec<&str>) -> Vec<String> {
     updates
         .into_iter()
-        .map(reorder_update)
-        .collect::<Vec<&str>>()
+        .map(|update| {
+            let mut update_i32: Vec<i32> = update
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .map(|s| s.parse::<i32>().unwrap())
+                .collect();
+            update_i32.sort_by(|x, y| compare(rules.clone(), x, y));
+            update_i32
+                .into_iter()
+                .map(|x| x.to_string())
+                .reduce(|acc, cur| acc + "," + &cur)
+                .unwrap()
+        })
+        .collect::<Vec<String>>()
 }
 
 fn main() {
@@ -97,5 +115,5 @@ fn main() {
         .map(get_middle_update)
         .sum();
     println!("Puzzle 1 result: {}", sum_middle);
-    // println!("Puzzle 2 result: {}", sum_middle_invalid_reordered);
+    println!("Puzzle 2 result: {}", sum_middle_invalid_reordered);
 }
