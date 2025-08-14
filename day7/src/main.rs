@@ -1,6 +1,15 @@
 use regex::Regex;
 use std::fs;
 
+const SOLVE_PUZZLE_2: bool = true;
+
+fn concatenate(num_1: i64, num_2: i64) -> i64 {
+    let str_num1 = num_1.to_string();
+    let str_num2 = num_2.to_string();
+    let concatenated = format!("{}{}", str_num1, str_num2);
+    concatenated.parse().unwrap()
+}
+
 fn dfs(numbers: &Vec<i64>, cur: usize, accumulator: i64, target: i64) -> bool {
     if cur >= numbers.len() - 1 {
         return accumulator == target;
@@ -11,6 +20,17 @@ fn dfs(numbers: &Vec<i64>, cur: usize, accumulator: i64, target: i64) -> bool {
         return true;
     }
     if dfs(numbers, cur + 1, accumulator * numbers[cur + 1], target) {
+        // If we found a valid path, we can return true immediately
+        return true;
+    }
+    if SOLVE_PUZZLE_2
+        && dfs(
+            numbers,
+            cur + 1,
+            concatenate(accumulator, numbers[cur + 1]),
+            target,
+        )
+    {
         // If we found a valid path, we can return true immediately
         return true;
     }
