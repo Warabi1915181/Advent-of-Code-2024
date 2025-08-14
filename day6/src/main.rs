@@ -1,12 +1,13 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 
-#[derive(Eq, Hash, PartialEq, Clone)]
+#[derive(Eq, Hash, PartialEq, Clone, Copy)]
 struct Coordinate {
     x: i32,
     y: i32,
 }
 
+#[derive(Clone, Hash, Eq, PartialEq, Copy)]
 enum Orientation {
     North,
     South,
@@ -61,6 +62,13 @@ impl Guard {
             false
         }
     }
+    fn is_looping(&self, trail: &HashMap<Coordinate, HashMap<Orientation, bool>>) -> bool {
+        if let Some(orientations) = trail.get(&self.position) {
+            orientations.contains_key(&self.orientation)
+        } else {
+            false
+        }
+    }
 }
 
 fn within_bounds(coord: &Coordinate, nx: i32, ny: i32) -> bool {
@@ -111,31 +119,95 @@ fn get_guard_start(lines: &[&str]) -> Guard {
 }
 
 fn main() {
-    let fs = fs::read_to_string("example.txt").expect("Should have been able to read the file");
+    let fs = fs::read_to_string("input.txt").expect("Should have been able to read the file");
     let map: Vec<&str> = fs.lines().collect();
 
-    let obstructions: HashSet<Coordinate> = get_obstructions(&map);
+    let mut obstructions: HashSet<Coordinate> = get_obstructions(&map);
     let mut guard: Guard = get_guard_start(&map);
-    let mut footprint: HashSet<Coordinate> = HashSet::new();
+    let start_position = guard.position;
+    let start_orientation = guard.orientation;
+    let mut trail: HashMap<Coordinate, HashMap<Orientation, bool>> = HashMap::new();
     let nx: i32 = map[0].len() as i32;
     let ny: i32 = map.len() as i32;
 
-    footprint.insert(guard.position.clone());
-
-    let mut iter_stuck = 0;
-    let last: Coordinate = guard.position.clone();
+    let orientations: HashMap<Orientation, bool> =
+        [(guard.orientation, true)].iter().cloned().collect();
+    trail.insert(guard.position, orientations);
 
     while guard.move_forward(&obstructions, nx, ny) {
-        footprint.insert(guard.position.clone());
-        // safe guard to prevent infinite loop
-        if guard.position == last {
-            iter_stuck += 1;
-            if iter_stuck > 1000 {
-                panic!("Guard is stuck, stopping.");
+        // first check if the guard is now stepping on a previously visited position in the same
+        // direction
+        if guard.is_looping(&trail) {
+            println!("Guard is looping");
+            break;
+        }
+        match trail.get_mut(&guard.position) {
+            Some(orientations) => {
+                orientations.entry(guard.orientation).or_insert(true);
             }
-        } else {
-            iter_stuck = 0;
+            None => {
+                let orientations: HashMap<Orientation, bool> =
+                    [(guard.orientation, true)].iter().cloned().collect();
+                trail.insert(guard.position, orientations);
+            }
         }
     }
-    println!("Answer: {}", footprint.len());
+    println!("Puzzle 1 answer: {}", trail.len());
+
+    let original_trail = trail.clone();
+    let visited_positions = original_trail.keys();
+    // TODO: find a smarter way to find the possible candidates
+    let possible_positions = visited_positions;
+    let mut count = 0;
+
+    // Reset states
+    guard.position = start_position;
+    guard.orientation = start_orientation;
+    trail.clear();
+
+    let num_possible_positions = possible_positions.clone().len();
+    println!("There are {} visited positions", num_possible_positions);
+
+    for (index, visited) in possible_positions.enumerate() {
+        if index % 1000 == 0 || index == num_possible_positions - 1 {
+            println!(
+                "Processing position {}/{}",
+                index + 1,
+                num_possible_positions
+            );
+        }
+        if *visited == start_position {
+            continue; // Skip the starting position
+        }
+
+        let orientations: HashMap<Orientation, bool> =
+            [(start_orientation, true)].iter().cloned().collect();
+        trail.insert(start_position, orientations);
+        obstructions.insert(*visited);
+        // println!("Obstruction added at: ({}, {})", visited.x, visited.y);
+        while guard.move_forward(&obstructions, nx, ny) {
+            // first check if the guard is now stepping on a previously visited position in the same
+            // direction
+
+            if guard.is_looping(&trail) {
+                count += 1;
+                break;
+            }
+            match trail.get_mut(&guard.position) {
+                Some(orientations) => {
+                    orientations.entry(guard.orientation).or_insert(true);
+                }
+                None => {
+                    let orientations: HashMap<Orientation, bool> =
+                        [(guard.orientation, true)].iter().cloned().collect();
+                    trail.insert(guard.position, orientations);
+                }
+            }
+        }
+        obstructions.remove(visited);
+        trail.clear();
+        guard.position = start_position;
+        guard.orientation = start_orientation;
+    }
+    println!("Puzzle 2 answer: {}", count);
 }
